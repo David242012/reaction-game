@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reaction Time Game</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background-color: red;
+      color: white;
+      text-align: center;
+      transition: background-color 0.3s;
+    }
+
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #reaction-time {
+      font-size: 2em;
+      margin-top: 20px;
+    }
+
+    #status {
+      font-size: 1.2em;
+      margin-top: 10px;
+    }
+
+    #leaderboard {
+      margin-top: 20px;
+      font-size: 1em;
+      color: yellow;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    #message {
+      font-size: 2em;
+    }
+
+    #reset-button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background-color: yellow;
+      color: black;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    #reset-button:hover {
+      background-color: #f5e700;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1 id="message">Be Ready</h1>
+    <div id="reaction-time"></div>
+    <div id="status"></div>
+    <div id="leaderboard" class="hidden">
+      <h2>Leaderboard</h2>
+      <ol id="leaderboard-list"></ol>
+    </div>
+    <button id="reset-button" class="hidden">Reset Game</button>
+  </div>
+
+  <!-- Firebase SDK and Game Logic -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDWkwxIX24YBJOhR8b6PciBf8Jx_mBPtsc",
+      authDomain: "reactiongame-22959.firebaseapp.com",
+      projectId: "reactiongame-22959",
+      storageBucket: "reactiongame-22959.appspot.com",
+      messagingSenderId: "801977388482",
+      appId: "1:801977388482:web:7678e67b4b49e00eab9a5b"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let startTime;
+    let reactionTime = 0;
+    let isGreen = false;
+
+    function startGame() {
+      document.body.style.backgroundColor = 'red';
+      document.getElementById('message').textContent = 'Be Ready';
+      document.getElementById('reaction-time').textContent = '';
+      document.getElementById('status').textContent = '';
+      document.getElementById('leaderboard').classList.add('hidden');
+      document.getElementById('reset-button').classList.add('hidden');
+
+      const delay = Math.floor(Math.random() * 3000) + 2000;
+      setTimeout(() => {
+        document.body.style.backgroundColor = 'green';
+        document.getElementById('message').textContent = 'Go!';
+        startTime = Date.now();
+        isGreen = true;
+      }, delay);
+    }
+
+    async function stopTimer() {
+      if (isGreen) {
+        reactionTime = Date.now() - startTime;
+        document.getElementById('reaction-time').textContent = `Your reaction time: ${reactionTime} ms`;
+        document.getElementById('status').textContent = 'Press any key to start again';
+        isGreen = false;
+        document.body.style.backgroundColor = 'red';
+        document.getElementById('message').textContent = 'Be Ready';
+        await saveScore(reactionTime);
+        await showLeaderboard();
+        document.getElementById('reset-button').classList.remove('hidden');
+      }
+    }
+
+    async function saveScore(time) {
+      try {
+        await addDoc(collection(db, "scores"), { time, created: Date.now() });
+      } catch (e) {
+        console.error("Error adding score: ", e);
+      }
+    }
+
+    async function showLeaderboard() {
+      const leaderboardList = document.getElementById('leaderboard-list');
+      leaderboardList.innerHTML = '';
+      try {
+        const q = query(collection(db, "scores"), orderBy("time"), limit(5));
+        const querySnapshot = await getDocs(q);
+        let rank = 1;
+        querySnapshot.forEach((doc) => {
+          const li = document.createElement('li');
+          li.textContent = `#${rank} - ${doc.data().time} ms`;
+          leaderboardList.appendChild(li);
+          rank++;
+        });
+        document.getElementById('leaderboard').classList.remove('hidden');
+      } catch (e) {
+        console.error("Error loading leaderboard: ", e);
+      }
+    }
+
+    document.body.addEventListener('keydown', (event) => {
+      if (event.key === ' ' || event.key === 'Enter') {
+        stopTimer();
+      }
+    });
+
+    document.body.addEventListener('click', stopTimer);
+
+    document.getElementById('reset-button').addEventListener('click', () => {
+      startGame();
+    });
+
+    startGame();
+  </script>
+</body>
+</html>
