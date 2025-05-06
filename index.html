@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Reaction Time Game</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       padding: 0;
@@ -13,23 +17,63 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      flex-direction: column;
-      background-color: red;
+      background-color: black;
       color: white;
-      text-align: center;
-      transition: background-color 0.3s;
     }
 
-    #game-container {
+    #enter-screen {
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
+      height: 100vh;
+      width: 100%;
+      background-color: black;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+    }
+
+    #enter-screen h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+    }
+
+    #enter-button {
+      padding: 20px 50px;
+      font-size: 1.5em;
+      background-color: black;
+      color: white;
+      border: 2px solid white;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(255, 255, 255, 0.3);
+      transition: all 0.1s ease-in-out;
+    }
+
+    #enter-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 5px rgba(255, 255, 255, 0.2);
+    }
+
+    #game-container {
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      width: 100%;
+      text-align: center;
+    }
+
+    #message {
+      font-size: 2.5em;
+      margin-bottom: 20px;
     }
 
     #reaction-time {
       font-size: 2em;
-      margin-top: 20px;
     }
 
     #status {
@@ -38,51 +82,57 @@
     }
 
     #leaderboard {
-      margin-top: 20px;
-      font-size: 1em;
+      margin-top: 30px;
+      font-size: 1.1em;
       color: yellow;
     }
 
-    .hidden {
-      display: none;
-    }
-
-    #message {
-      font-size: 2em;
+    #leaderboard ol {
+      padding-left: 20px;
+      text-align: left;
     }
 
     #reset-button {
-      margin-top: 20px;
-      padding: 10px 20px;
+      margin-top: 30px;
+      padding: 10px 25px;
       font-size: 1.2em;
-      background-color: yellow;
+      background-color: white;
       color: black;
       border: none;
+      border-radius: 8px;
       cursor: pointer;
-      border-radius: 5px;
+      display: none;
     }
 
     #reset-button:hover {
-      background-color: #f5e700;
+      background-color: lightgray;
     }
   </style>
 </head>
 <body>
+
+  <!-- Welcome Screen -->
+  <div id="enter-screen">
+    <h1>Welcome to Global Version</h1>
+    <button id="enter-button">Start</button>
+  </div>
+
+  <!-- Game Screen -->
   <div id="game-container">
     <h1 id="message">Be Ready</h1>
     <div id="reaction-time"></div>
     <div id="status"></div>
     <div id="leaderboard" class="hidden">
-      <h2>Leaderboard</h2>
+      <h2>Top 5</h2>
       <ol id="leaderboard-list"></ol>
     </div>
-    <button id="reset-button" class="hidden">Reset Game</button>
+    <button id="reset-button">Reset Game</button>
   </div>
 
   <!-- Firebase SDK and Game Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDWkwxIX24YBJOhR8b6PciBf8Jx_mBPtsc",
@@ -96,81 +146,99 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    let startTime;
-    let reactionTime = 0;
+    let startTime = 0;
     let isGreen = false;
+    let listenerActive = false;
+
+    const body = document.body;
+    const enterScreen = document.getElementById("enter-screen");
+    const gameContainer = document.getElementById("game-container");
+    const messageEl = document.getElementById("message");
+    const reactionTimeEl = document.getElementById("reaction-time");
+    const statusEl = document.getElementById("status");
+    const resetButton = document.getElementById("reset-button");
+    const leaderboard = document.getElementById("leaderboard");
+    const leaderboardList = document.getElementById("leaderboard-list");
+
+    document.getElementById("enter-button").addEventListener("click", () => {
+      enterScreen.style.display = "none";
+      gameContainer.style.display = "flex";
+      startGame();
+    });
 
     function startGame() {
-      document.body.style.backgroundColor = 'red';
-      document.getElementById('message').textContent = 'Be Ready';
-      document.getElementById('reaction-time').textContent = '';
-      document.getElementById('status').textContent = '';
-      document.getElementById('leaderboard').classList.add('hidden');
-      document.getElementById('reset-button').classList.add('hidden');
+      isGreen = false;
+      listenerActive = false;
+      body.style.backgroundColor = "red";
+      messageEl.textContent = "Be Ready";
+      reactionTimeEl.textContent = "";
+      statusEl.textContent = "";
+      resetButton.style.display = "none";
+      leaderboard.classList.add("hidden");
+      leaderboardList.innerHTML = "";
 
       const delay = Math.floor(Math.random() * 3000) + 2000;
       setTimeout(() => {
-        document.body.style.backgroundColor = 'green';
-        document.getElementById('message').textContent = 'Go!';
+        body.style.backgroundColor = "green";
+        messageEl.textContent = "Go!";
         startTime = Date.now();
         isGreen = true;
+        listenerActive = true;
       }, delay);
     }
 
     async function stopTimer() {
-      if (isGreen) {
-        reactionTime = Date.now() - startTime;
-        document.getElementById('reaction-time').textContent = `Your reaction time: ${reactionTime} ms`;
-        document.getElementById('status').textContent = 'Press any key to start again';
-        isGreen = false;
-        document.body.style.backgroundColor = 'red';
-        document.getElementById('message').textContent = 'Be Ready';
-        await saveScore(reactionTime);
-        await showLeaderboard();
-        document.getElementById('reset-button').classList.remove('hidden');
-      }
-    }
+      if (!listenerActive || !isGreen) return;
 
-    async function saveScore(time) {
+      listenerActive = false;
+      isGreen = false;
+
+      const reactionTime = Date.now() - startTime;
+      reactionTimeEl.textContent = `Your reaction time: ${reactionTime} ms`;
+      statusEl.textContent = "Press Reset to try again";
+      body.style.backgroundColor = "red";
+      messageEl.textContent = "Be Ready";
+      resetButton.style.display = "inline-block";
+
       try {
-        await addDoc(collection(db, "scores"), { time, created: Date.now() });
+        await addDoc(collection(db, "scores"), {
+          time: reactionTime,
+          created: Date.now()
+        });
       } catch (e) {
-        console.error("Error adding score: ", e);
+        console.error("Error saving score:", e);
       }
+
+      showLeaderboard();
     }
 
     async function showLeaderboard() {
-      const leaderboardList = document.getElementById('leaderboard-list');
-      leaderboardList.innerHTML = '';
+      leaderboardList.innerHTML = "";
       try {
         const q = query(collection(db, "scores"), orderBy("time"), limit(5));
-        const querySnapshot = await getDocs(q);
+        const snapshot = await getDocs(q);
         let rank = 1;
-        querySnapshot.forEach((doc) => {
-          const li = document.createElement('li');
+        snapshot.forEach((doc) => {
+          const li = document.createElement("li");
           li.textContent = `#${rank} - ${doc.data().time} ms`;
           leaderboardList.appendChild(li);
           rank++;
         });
-        document.getElementById('leaderboard').classList.remove('hidden');
+        leaderboard.classList.remove("hidden");
       } catch (e) {
-        console.error("Error loading leaderboard: ", e);
+        console.error("Error loading leaderboard:", e);
       }
     }
 
-    document.body.addEventListener('keydown', (event) => {
-      if (event.key === ' ' || event.key === 'Enter') {
-        stopTimer();
-      }
+    document.addEventListener("keydown", (e) => {
+      if (e.key === " " || e.key === "Enter") stopTimer();
     });
 
-    document.body.addEventListener('click', stopTimer);
+    document.addEventListener("click", () => stopTimer());
 
-    document.getElementById('reset-button').addEventListener('click', () => {
+    resetButton.addEventListener("click", () => {
       startGame();
     });
-
-    startGame();
   </script>
 </body>
 </html>
