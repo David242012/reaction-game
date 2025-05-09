@@ -37,11 +37,19 @@
 
     #enter-screen h1 {
       font-size: 2.5em;
-      margin-bottom: 30px;
+      margin-bottom: 20px;
+    }
+
+    #name-input {
+      padding: 10px;
+      font-size: 1.2em;
+      margin-bottom: 20px;
+      border-radius: 6px;
+      border: none;
     }
 
     #enter-button {
-      padding: 20px 50px;
+      padding: 15px 40px;
       font-size: 1.5em;
       background-color: black;
       color: white;
@@ -114,6 +122,7 @@
   <!-- Welcome Screen -->
   <div id="enter-screen">
     <h1>Welcome to Global Version</h1>
+    <input type="text" id="name-input" placeholder="Enter your name" />
     <button id="enter-button">Start</button>
   </div>
 
@@ -122,10 +131,13 @@
     <h1 id="message">Be Ready</h1>
     <div id="reaction-time"></div>
     <div id="status"></div>
+
+    <!-- Leaderboard -->
     <div id="leaderboard" class="hidden">
-      <h2>Top 5</h2>
       <ol id="leaderboard-list"></ol>
     </div>
+
+    <!-- Reset Button inside game-container -->
     <button id="reset-button">Reset Game</button>
   </div>
 
@@ -149,6 +161,7 @@
     let startTime = 0;
     let isGreen = false;
     let listenerActive = false;
+    let playerName = "";
 
     const body = document.body;
     const enterScreen = document.getElementById("enter-screen");
@@ -159,8 +172,14 @@
     const resetButton = document.getElementById("reset-button");
     const leaderboard = document.getElementById("leaderboard");
     const leaderboardList = document.getElementById("leaderboard-list");
+    const nameInput = document.getElementById("name-input");
 
     document.getElementById("enter-button").addEventListener("click", () => {
+      playerName = nameInput.value.trim();
+      if (playerName === "") {
+        alert("Please enter your name.");
+        return;
+      }
       enterScreen.style.display = "none";
       gameContainer.style.display = "flex";
       startGame();
@@ -174,8 +193,8 @@
       reactionTimeEl.textContent = "";
       statusEl.textContent = "";
       resetButton.style.display = "none";
-      leaderboard.classList.add("hidden");
       leaderboardList.innerHTML = "";
+      leaderboard.classList.add("hidden");
 
       const delay = Math.floor(Math.random() * 3000) + 2000;
       setTimeout(() => {
@@ -200,33 +219,55 @@
       messageEl.textContent = "Be Ready";
       resetButton.style.display = "inline-block";
 
+      showLeaderboard(); // show leaderboard immediately
+
       try {
         await addDoc(collection(db, "scores"), {
+          name: playerName,
           time: reactionTime,
           created: Date.now()
         });
       } catch (e) {
         console.error("Error saving score:", e);
       }
-
-      showLeaderboard();
     }
 
     async function showLeaderboard() {
       leaderboardList.innerHTML = "";
+
+      // Loading message (big and black)
+      const loadingItem = document.createElement("li");
+      loadingItem.textContent = "Loading leaderboard...";
+      loadingItem.style.color = "black";
+      loadingItem.style.fontSize = "1.5em";
+      leaderboardList.appendChild(loadingItem);
+      leaderboard.classList.remove("hidden");
+
       try {
         const q = query(collection(db, "scores"), orderBy("time"), limit(5));
         const snapshot = await getDocs(q);
+
+        leaderboardList.innerHTML = "";
+
+        // Add "Top 5" title only here
+        const header = document.createElement("h2");
+        header.textContent = "Top 5";
+        header.style.marginBottom = "10px";
+        header.style.color = "yellow";
+        leaderboardList.appendChild(header);
+
         let rank = 1;
         snapshot.forEach((doc) => {
           const li = document.createElement("li");
-          li.textContent = `#${rank} - ${doc.data().time} ms`;
+          const data = doc.data();
+          const name = data.name || "Unknown";
+          li.textContent = `#${rank} - ${name} - ${data.time} ms`;
           leaderboardList.appendChild(li);
           rank++;
         });
-        leaderboard.classList.remove("hidden");
       } catch (e) {
         console.error("Error loading leaderboard:", e);
+        leaderboardList.innerHTML = "<li style='color:black; font-size:1.5em;'>Error loading leaderboard</li>";
       }
     }
 
