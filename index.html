@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="monetag" content="f931e79d06bcdb4e83792658f8d39631" />
   <title>Reaction Time Game</title>
   <style>
     * {
@@ -235,7 +236,6 @@
     async function showLeaderboard() {
       leaderboardList.innerHTML = "";
 
-      // Loading message (big and black)
       const loadingItem = document.createElement("li");
       loadingItem.textContent = "Loading leaderboard...";
       loadingItem.style.color = "black";
@@ -249,7 +249,6 @@
 
         leaderboardList.innerHTML = "";
 
-        // Add "Top 5" title only here
         const header = document.createElement("h2");
         header.textContent = "Top 5";
         header.style.marginBottom = "10px";
